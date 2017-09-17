@@ -1,53 +1,53 @@
-'use strict'
+const rdf = require('rdf-ext')
 
-var rdf = require('rdf-ext')
+class Cronify {
+  constructor (options) {
+    options = options || {}
 
-function Cronify (options) {
-  options = options || {}
-
-  this.timestampPredicate = options.timestampPredicate || rdf.createNamedNode('http://purl.org/dc/elements/1.1/date')
-  this.timestampDatatype = options.timestampDatatype || rdf.createNamedNode('http://www.w3.org/2001/XMLSchema#dateTime')
-  this.containerPredicate = options.containerPredicate || rdf.createNamedNode('http://www.w3.org/ns/hydra/core#member')
-}
-
-Cronify.prototype.addTimestamp = function (graph, subject, timestamp) {
-  if (graph.match(subject, this.timestampPredicate).length === 0) {
-    graph.add(rdf.createTriple(subject, this.timestampPredicate, this.createTimestampLiteral(timestamp)))
+    this.timestampPredicate = options.timestampPredicate || rdf.namedNode('http://purl.org/dc/elements/1.1/date')
+    this.timestampDatatype = options.timestampDatatype || rdf.namedNode('http://www.w3.org/2001/XMLSchema#dateTime')
+    this.containerPredicate = options.containerPredicate || rdf.namedNode('http://www.w3.org/ns/hydra/core#member')
   }
 
-  return graph
-}
+  addTimestamp (graph, subject, timestamp) {
+    if (graph.match(subject, this.timestampPredicate).length === 0) {
+      graph.add(rdf.quad(subject, this.timestampPredicate, this.createTimestampLiteral(timestamp)))
+    }
 
-Cronify.prototype.createCronifiedIri = function (containerIri, timestamp) {
-  timestamp = timestamp.toISOString().split('-').join('').split(':').join('').replace('.', '')
+    return graph
+  }
 
-  return rdf.createNamedNode(containerIri.toString() + timestamp)
-}
+  createCronifiedIri (containerIri, timestamp) {
+    timestamp = timestamp.toISOString().split('-').join('').split(':').join('').replace('.', '')
 
-Cronify.prototype.createTimestampLiteral = function (timestamp) {
-  timestamp = timestamp || new Date()
+    return rdf.namedNode(containerIri.toString() + timestamp)
+  }
 
-  return rdf.createLiteral(timestamp.toISOString(), null, this.timestampDatatype)
-}
+  createTimestampLiteral (timestamp) {
+    timestamp = timestamp || new Date()
 
-Cronify.prototype.store = function (store, subject, container, graph) {
-  var timestamp = new Date(graph.match(subject, this.timestampPredicate).toArray().shift().object.nominalValue)
-  var cronifiedIri = this.createCronifiedIri(container, timestamp)
+    return rdf.literal(timestamp.toISOString(), this.timestampDatatype)
+  }
 
-  var containerGraph = rdf.createGraph()
+  store (store, subject, container, graph) {
+    const timestamp = new Date(graph.match(subject, this.timestampPredicate).toArray().shift().object.value)
+    const cronifiedIri = this.createCronifiedIri(container, timestamp)
 
-  containerGraph.add(rdf.createTriple(
-    rdf.createNamedNode(container.toString()),
-    this.containerPredicate,
-    cronifiedIri
-  ))
+    const containerGraph = rdf.dataset()
 
-  return Promise.all([
-    store.add(cronifiedIri.toString(), graph),
-    store.merge(container.toString(), containerGraph)
-  ]).then(() => {
-    return cronifiedIri
-  })
+    containerGraph.add(rdf.quad(
+      rdf.namedNode(container.toString()),
+      this.containerPredicate,
+      cronifiedIri
+    ))
+
+    return Promise.all([
+      store.add(cronifiedIri.toString(), graph),
+      store.merge(container.toString(), containerGraph)
+    ]).then(() => {
+      return cronifiedIri
+    })
+  }
 }
 
 // add static methods
