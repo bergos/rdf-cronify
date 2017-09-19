@@ -31,19 +31,22 @@ class Cronify {
 
   store (store, subject, container, graph) {
     const timestamp = new Date(graph.match(subject, this.timestampPredicate).toArray().shift().object.value)
+
     const cronifiedIri = this.createCronifiedIri(container, timestamp)
+    const cronifiedGraph = rdf.dataset(graph, cronifiedIri)
 
-    const containerGraph = rdf.dataset()
-
-    containerGraph.add(rdf.quad(
-      rdf.namedNode(container.toString()),
-      this.containerPredicate,
-      cronifiedIri
-    ))
+    const containerGraph = rdf.dataset([
+      rdf.quad(
+        rdf.namedNode(container.toString()),
+        this.containerPredicate,
+        cronifiedIri,
+        container
+      )
+    ])
 
     return Promise.all([
-      store.add(cronifiedIri.toString(), graph),
-      store.merge(container.toString(), containerGraph)
+      rdf.waitFor(store.import(cronifiedGraph.toStream())),
+      rdf.waitFor(store.import(containerGraph.toStream()))
     ]).then(() => {
       return cronifiedIri
     })

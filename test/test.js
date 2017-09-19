@@ -1,8 +1,9 @@
 /* global describe it */
 
 const assert = require('assert')
-const Cronify = require('..')
 const rdf = require('rdf-ext')
+const Cronify = require('..')
+const DatasetStore = require('rdf-store-dataset')
 
 describe('rdf-cronify', function () {
   it('should should be a constructor', function () {
@@ -157,16 +158,15 @@ describe('rdf-cronify', function () {
         )
       ])
 
-      const store = {
-        add: function (iri, graph) {
-          assert(cronifiedGraph.equals(graph))
-        },
-        merge: function (iri, graph) {
-          assert(containerGraph.equals(graph))
-        }
-      }
+      const store = new DatasetStore()
 
-      return Cronify.store(store, subject, container, cronifiedGraph)
+      return Cronify.store(store, subject, container, cronifiedGraph).then(() => {
+        const actualContainerGraph = rdf.graph(store.dataset.match(null, null, null, container))
+        const actualCronifiedGraph = rdf.graph(store.dataset.filter(q => !q.graph.equals(container)))
+
+        assert.equal(actualContainerGraph.toCanonical(), containerGraph.toCanonical())
+        assert.equal(actualCronifiedGraph.toCanonical(), cronifiedGraph.toCanonical())
+      })
     })
 
     it('should store the cronified graph and link to it in the container with a custom container predicate', function () {
@@ -200,16 +200,15 @@ describe('rdf-cronify', function () {
         )
       ])
 
-      const store = {
-        add: function (iri, graph) {
-          assert(cronifiedGraph.equals(graph))
-        },
-        merge: function (iri, graph) {
-          assert(containerGraph.equals(graph))
-        }
-      }
+      const store = new DatasetStore()
 
-      return localCronify.store(store, subject, container, cronifiedGraph)
+      return localCronify.store(store, subject, container, cronifiedGraph).then(() => {
+        const actualContainerGraph = rdf.graph(store.dataset.match(null, null, null, container))
+        const actualCronifiedGraph = rdf.graph(store.dataset.filter(q => !q.graph.equals(container)))
+
+        assert.equal(actualContainerGraph.toCanonical(), containerGraph.toCanonical())
+        assert.equal(actualCronifiedGraph.toCanonical(), cronifiedGraph.toCanonical())
+      })
     })
   })
 })
