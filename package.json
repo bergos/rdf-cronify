@@ -1,6 +1,6 @@
 {
   "name": "rdf-cronify",
-  "version": "1.0.0",
+  "version": "1.0.1",
   "description": "Add timestamps to RDF graphs and push them to a store",
   "main": "index.js",
   "scripts": {
